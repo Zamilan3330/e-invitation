@@ -182,6 +182,14 @@ body {
   width: 100%;
   -webkit-perspective: 1600px;
           perspective: 1600px;
+  /* transform хэзээ ч байхгүй — perspective цэвэр ажиллана */
+}
+
+/* Tilt target: perspective-аас тусдаа элемент — iOS Safari-д шаардлагатай */
+.flip-tilt {
+  width: 100%;
+  -webkit-transform-style: preserve-3d;
+          transform-style: preserve-3d;
 }
 
 /* ============================================================
