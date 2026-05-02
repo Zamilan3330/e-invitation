@@ -3,15 +3,26 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 
+const FLIP_DURATION = 700;
+
+function easeInOutCubic(t: number) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 export default function Home() {
   const [flipped, setFlipped] = useState(false);
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const flippedRef = useRef(false);
+
+  const wrapperRef = useRef<HTMLDivElement>(null); // tilt target (.flip-entrance)
+  const innerRef = useRef<HTMLDivElement>(null);   // flip target (.flip-inner)
+
   const gyroStarted = useRef(false);
   const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const peekRaf = useRef<number | null>(null);
+  const flipRaf = useRef<number | null>(null);
   const interacted = useRef(false);
 
-  /* ── Tilt helper (mouse + gyro shared) ── */
+  /* ── Tilt ── */
   const applyTilt = useCallback((x: number, y: number, instant: boolean) => {
     if (!wrapperRef.current) return;
     wrapperRef.current.style.transform = `rotateX(${(-x * 14).toFixed(2)}deg) rotateY(${(y * 14).toFixed(2)}deg)`;
@@ -20,7 +31,7 @@ export default function Home() {
       : "transform 600ms cubic-bezier(0.23, 1, 0.32, 1)";
   }, []);
 
-  /* ── Peek animation via rAF (Safari-safe, no CSS animation on preserve-3d) ── */
+  /* ── Peek (rAF) ── */
   const cancelPeek = useCallback(() => {
     if (peekTimer.current) clearTimeout(peekTimer.current);
     if (peekRaf.current) cancelAnimationFrame(peekRaf.current);
@@ -33,7 +44,6 @@ export default function Home() {
       if (interacted.current || iteration >= 2) return;
       const start = performance.now();
       const duration = 1100;
-
       const frame = (now: number) => {
         const t = Math.min(1, (now - start) / duration);
         const angle = Math.sin(t * Math.PI) * 25;
@@ -55,24 +65,49 @@ export default function Home() {
       };
       peekRaf.current = requestAnimationFrame(frame);
     };
-
     peekTimer.current = setTimeout(() => runPeek(0), 2500);
     return () => cancelPeek();
   }, [cancelPeek]);
 
-  /* ── Gyroscope — Android болон iOS ── */
+  /* ── Flip (rAF — CSS transition-г bypass хийж iOS Safari-д ажиллана) ── */
+  const doFlip = useCallback((toFlipped: boolean) => {
+    if (!innerRef.current) return;
+    if (flipRaf.current) cancelAnimationFrame(flipRaf.current);
+
+    const el = innerRef.current;
+    const match = el.style.transform.match(/rotateY\(([-\d.]+)deg\)/);
+    const startAngle = match ? parseFloat(match[1]) : (toFlipped ? 0 : 180);
+    const endAngle = toFlipped ? 180 : 0;
+    const startTime = performance.now();
+
+    // CSS transition-г унтраана — rAF animate хийна
+    el.style.webkitTransition = "none";
+    el.style.transition = "none";
+
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - startTime) / FLIP_DURATION);
+      const angle = startAngle + (endAngle - startAngle) * easeInOutCubic(t);
+      (el.style as any).webkitTransform = `rotateY(${angle.toFixed(2)}deg)`;
+      el.style.transform = `rotateY(${angle.toFixed(2)}deg)`;
+      if (t < 1) {
+        flipRaf.current = requestAnimationFrame(frame);
+      } else {
+        flipRaf.current = null;
+      }
+    };
+    flipRaf.current = requestAnimationFrame(frame);
+  }, []);
+
+  /* ── Gyroscope ── */
   const startGyroscope = useCallback(() => {
     if (gyroStarted.current) return;
     gyroStarted.current = true;
-
     let neutralBeta: number | null = null;
     let neutralGamma: number | null = null;
-
     window.addEventListener(
       "deviceorientation",
       (e: DeviceOrientationEvent) => {
         if (e.beta === null || e.gamma === null) return;
-        // Анхны уншилтыг neutral болгон авна — утасны барих өнцгөөс үл хамааран ажиллана
         if (neutralBeta === null) {
           neutralBeta = e.beta;
           neutralGamma = e.gamma ?? 0;
@@ -92,7 +127,7 @@ export default function Home() {
     if (typeof DOE.requestPermission !== "function") startGyroscope();
   }, [startGyroscope]);
 
-  /* ── Mouse — desktop ── */
+  /* ── Mouse ── */
   const onMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       cancelPeek();
@@ -107,17 +142,19 @@ export default function Home() {
 
   const onMouseLeave = useCallback(() => applyTilt(0, 0, false), [applyTilt]);
 
-  /* ── Toggle flip ── */
+  /* ── Toggle ── */
   const toggle = () => {
     cancelPeek();
     interacted.current = true;
-    setFlipped((v) => !v);
+    const next = !flippedRef.current;
+    flippedRef.current = next;
+    setFlipped(next);
+    doFlip(next);
 
-    // iOS 13+: card дарах үед gyroscope зөвшөөрөл асуух
     const DOE = DeviceOrientationEvent as any;
     if (typeof DOE.requestPermission === "function") {
       DOE.requestPermission()
-        .then((state: string) => { if (state === "granted") startGyroscope(); })
+        .then((s: string) => { if (s === "granted") startGyroscope(); })
         .catch(() => {});
     }
   };
@@ -129,7 +166,6 @@ export default function Home() {
   return (
     <div className="page-wrapper">
       <div className="page-bg" aria-hidden="true" />
-
       <main className="invitation-main">
         <div className="ornament" aria-hidden="true">
           <div className="ornament-line" />
@@ -139,14 +175,12 @@ export default function Home() {
           <div className="ornament-line ornament-line--right" />
         </div>
 
-        {/* tilt → flip chain-аас гадуур: preserve-3d-гүй тул iOS Safari-д flip ажиллана */}
         <div
           ref={wrapperRef}
           className="flip-entrance"
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
         >
-          {/* perspective зөвхөн — transform хэзээ ч байхгүй */}
           <div className="flip-card-wrapper">
             <div
               role="button"
@@ -157,26 +191,13 @@ export default function Home() {
               aria-pressed={flipped}
               aria-label={flipped ? "Урд талыг харах" : "Арийн талыг харах"}
             >
-              <div className={`flip-inner${flipped ? " is-flipped" : ""}`}>
+              <div ref={innerRef} className="flip-inner">
                 <div className="flip-sizer" aria-hidden="true" />
                 <div className="flip-face">
-                  <Image
-                    src="/Front_Side.png"
-                    alt="Урилгын урд тал"
-                    fill
-                    style={{ objectFit: "contain" }}
-                    draggable={false}
-                    priority
-                  />
+                  <Image src="/Front_Side.png" alt="Урилгын урд тал" fill style={{ objectFit: "contain" }} draggable={false} priority />
                 </div>
                 <div className="flip-face flip-back">
-                  <Image
-                    src="/Back_side.png"
-                    alt="Урилгын арийн тал"
-                    fill
-                    style={{ objectFit: "contain" }}
-                    draggable={false}
-                  />
+                  <Image src="/Back_side.png" alt="Урилгын арийн тал" fill style={{ objectFit: "contain" }} draggable={false} />
                 </div>
               </div>
             </div>

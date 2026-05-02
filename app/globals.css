@@ -227,11 +227,7 @@ body {
   display: block;
   -webkit-transform-style: preserve-3d;
           transform-style: preserve-3d;
-  -webkit-transition: -webkit-transform var(--transition-flip);
-          transition: -webkit-transform var(--transition-flip);
-       -o-transition: transform var(--transition-flip);
-          transition: transform var(--transition-flip);
-          transition: transform var(--transition-flip), -webkit-transform var(--transition-flip);
+  /* transition байхгүй — JS requestAnimationFrame animate хийнэ (iOS Safari-д найдвартай) */
 }
 
 /* Modern browsers: aspect-ratio */
@@ -253,10 +249,6 @@ body {
   }
 }
 
-.flip-inner.is-flipped {
-  -webkit-transform: rotateY(180deg);
-          transform: rotateY(180deg);
-}
 
 /* ============================================================
    FLIP FACES
