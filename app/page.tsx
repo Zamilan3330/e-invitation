@@ -139,45 +139,44 @@ export default function Home() {
           <div className="ornament-line ornament-line--right" />
         </div>
 
-        <div className="flip-entrance">
-          {/* flip-card-wrapper: perspective ONLY — transform хэзээ ч байхгүй */}
-          <div
-            className="flip-card-wrapper"
-            onMouseMove={onMouseMove}
-            onMouseLeave={onMouseLeave}
-          >
-            {/* flip-tilt: tilt transform + preserve-3d — perspective-аас тусдаа */}
-            <div ref={wrapperRef} className="flip-tilt">
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={toggle}
-                onKeyDown={onKeyDown}
-                className="flip-card"
-                aria-pressed={flipped}
-                aria-label={flipped ? "Урд талыг харах" : "Арийн талыг харах"}
-              >
-                <div className={`flip-inner${flipped ? " is-flipped" : ""}`}>
-                  <div className="flip-sizer" aria-hidden="true" />
-                  <div className="flip-face">
-                    <Image
-                      src="/Front_Side.png"
-                      alt="Урилгын урд тал"
-                      fill
-                      style={{ objectFit: "contain" }}
-                      draggable={false}
-                      priority
-                    />
-                  </div>
-                  <div className="flip-face flip-back">
-                    <Image
-                      src="/Back_side.png"
-                      alt="Урилгын арийн тал"
-                      fill
-                      style={{ objectFit: "contain" }}
-                      draggable={false}
-                    />
-                  </div>
+        {/* tilt → flip chain-аас гадуур: preserve-3d-гүй тул iOS Safari-д flip ажиллана */}
+        <div
+          ref={wrapperRef}
+          className="flip-entrance"
+          onMouseMove={onMouseMove}
+          onMouseLeave={onMouseLeave}
+        >
+          {/* perspective зөвхөн — transform хэзээ ч байхгүй */}
+          <div className="flip-card-wrapper">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={toggle}
+              onKeyDown={onKeyDown}
+              className="flip-card"
+              aria-pressed={flipped}
+              aria-label={flipped ? "Урд талыг харах" : "Арийн талыг харах"}
+            >
+              <div className={`flip-inner${flipped ? " is-flipped" : ""}`}>
+                <div className="flip-sizer" aria-hidden="true" />
+                <div className="flip-face">
+                  <Image
+                    src="/Front_Side.png"
+                    alt="Урилгын урд тал"
+                    fill
+                    style={{ objectFit: "contain" }}
+                    draggable={false}
+                    priority
+                  />
+                </div>
+                <div className="flip-face flip-back">
+                  <Image
+                    src="/Back_side.png"
+                    alt="Урилгын арийн тал"
+                    fill
+                    style={{ objectFit: "contain" }}
+                    draggable={false}
+                  />
                 </div>
               </div>
             </div>
