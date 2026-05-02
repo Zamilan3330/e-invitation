@@ -190,8 +190,10 @@ body {
 /* Entrance wrapper — preserve-3d-гүй тул Safari-д animation аюулгүй */
 .flip-entrance {
   width: 100%;
-  -webkit-animation: cardReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
-          animation: cardReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+  /* backwards: delay-д from keyframe ажиллана, дууссаны дараа transform хадгалагдахгүй
+     → 3D context-г flatten хийхгүй тул flip ажиллана */
+  -webkit-animation: cardReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s backwards;
+          animation: cardReveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.25s backwards;
 }
 
 .flip-card {

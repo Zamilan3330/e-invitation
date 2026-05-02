@@ -64,12 +64,22 @@ export default function Home() {
   const startGyroscope = useCallback(() => {
     if (gyroStarted.current) return;
     gyroStarted.current = true;
+
+    let neutralBeta: number | null = null;
+    let neutralGamma: number | null = null;
+
     window.addEventListener(
       "deviceorientation",
       (e: DeviceOrientationEvent) => {
         if (e.beta === null || e.gamma === null) return;
-        const x = Math.max(-1, Math.min(1, (e.beta - 45) / 35));
-        const y = Math.max(-1, Math.min(1, e.gamma / 35));
+        // Анхны уншилтыг neutral болгон авна — утасны барих өнцгөөс үл хамааран ажиллана
+        if (neutralBeta === null) {
+          neutralBeta = e.beta;
+          neutralGamma = e.gamma ?? 0;
+          return;
+        }
+        const x = Math.max(-1, Math.min(1, (e.beta - neutralBeta) / 25));
+        const y = Math.max(-1, Math.min(1, ((e.gamma ?? 0) - neutralGamma!) / 25));
         applyTilt(x, y, true);
       },
       true
