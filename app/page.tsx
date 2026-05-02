@@ -1,12 +1,45 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 
 export default function Home() {
   const [flipped, setFlipped] = useState(false);
   const [showPeek, setShowPeek] = useState(true);
-  const [tilt, setTilt] = useState({ x: 0, y: 0, active: false });
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const applyTilt = (x: number, y: number, instant: boolean) => {
+    if (!wrapperRef.current) return;
+    wrapperRef.current.style.transform = `rotateX(${(-x * 14).toFixed(2)}deg) rotateY(${(y * 14).toFixed(2)}deg)`;
+    wrapperRef.current.style.transition = instant
+      ? "transform 80ms linear"
+      : "transform 600ms cubic-bezier(0.23, 1, 0.32, 1)";
+  };
+
+  /* Gyroscope — утас */
+  useEffect(() => {
+    if (typeof window === "undefined" || !("DeviceOrientationEvent" in window)) return;
+
+    const handler = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || e.gamma === null) return;
+      const x = Math.max(-1, Math.min(1, ((e.beta ?? 45) - 45) / 35));
+      const y = Math.max(-1, Math.min(1, (e.gamma ?? 0) / 35));
+      applyTilt(x, y, true);
+    };
+
+    window.addEventListener("deviceorientation", handler, true);
+    return () => window.removeEventListener("deviceorientation", handler, true);
+  }, []);
+
+  /* Mouse — desktop */
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientY - rect.top) / rect.height - 0.5;
+    const y = (e.clientX - rect.left) / rect.width - 0.5;
+    applyTilt(x, y, true);
+  };
+
+  const onMouseLeave = () => applyTilt(0, 0, false);
 
   const toggle = () => {
     setShowPeek(false);
@@ -19,15 +52,6 @@ export default function Home() {
       toggle();
     }
   };
-
-  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientY - rect.top) / rect.height - 0.5;
-    const y = (e.clientX - rect.left) / rect.width - 0.5;
-    setTilt({ x, y, active: true });
-  };
-
-  const onMouseLeave = () => setTilt({ x: 0, y: 0, active: false });
 
   return (
     <div className="page-wrapper">
@@ -43,15 +67,10 @@ export default function Home() {
         </div>
 
         <div
+          ref={wrapperRef}
           className="flip-card-wrapper"
           onMouseMove={onMouseMove}
           onMouseLeave={onMouseLeave}
-          style={{
-            transform: `rotateX(${(-tilt.x * 14).toFixed(2)}deg) rotateY(${(tilt.y * 14).toFixed(2)}deg)`,
-            transition: tilt.active
-              ? "transform 80ms linear"
-              : "transform 600ms cubic-bezier(0.23, 1, 0.32, 1)",
-          }}
         >
           <div
             role="button"
