@@ -19,7 +19,8 @@ const lato = Lato({
 
 export const metadata: Metadata = {
   title: "DSA Selenge",
-  description: "Та бүхнийг урьж байна",
+  description:
+    "Сэлэнгэ аймгийн Ардчилсан Оюутны Холбооны тэргүүнийг сонгох чуулганд таныг урьж байна.",
 };
 
 export default function RootLayout({
